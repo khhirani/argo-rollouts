@@ -152,7 +152,7 @@ spec:
 		ExpectActiveRevision("1").
 		ExpectPreviewRevision("2").
 		When().
-		Sleep(2*time.Second). // promoting too fast causes test to flake
+		Sleep(10*time.Second). // promoting too fast causes test to flake
 		PromoteRollout().
 		WaitForActiveRevision("2").
 		Sleep(2*time.Second). // analysis is created on later reconciliations after service cutover
@@ -168,7 +168,7 @@ spec:
 		ExpectPreviewRevision("2").
 		When().
 		ApplyManifests(original). // perform a rollback and make sure we skip pause/analysis
-		Sleep(2 * time.Second).   // checking too early may not catch the bug where we create analysis unnecessarily
+		Sleep(10* time.Second).   // checking too early may not catch the bug where we create analysis unnecessarily
 		Then().
 		ExpectRolloutStatus("Healthy"). // rollout is healthy immediately
 		ExpectAnalysisRunCount(2).      // no new analysis runs created
