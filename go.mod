@@ -19,12 +19,12 @@ require (
 	github.com/jstemmer/go-junit-report v0.9.1
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
-	github.com/newrelic/newrelic-client-go v0.49.0
+	github.com/newrelic/newrelic-client-go v0.58.3
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.8.0
 	github.com/prometheus/common v0.18.0
 	github.com/servicemeshinterface/smi-sdk-go v0.4.1
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spaceapegames/go-wavefront v1.8.1
 	github.com/spf13/cobra v1.1.1
@@ -37,8 +37,7 @@ require (
 	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
 	google.golang.org/grpc v1.33.1
 	google.golang.org/grpc/examples v0.0.0-20210331235824-f6bb3972ed15 // indirect
-	gopkg.in/yaml.v2 v2.3.0
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.20.4
 	k8s.io/apiextensions-apiserver v0.19.4
 	k8s.io/apimachinery v0.20.4
