@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/antonmedv/expr v1.8.9
 	github.com/argoproj/pkg v0.7.0
-	github.com/aws/aws-sdk-go-v2/config v1.0.0
+	github.com/aws/aws-sdk-go-v2/config v1.1.6
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.0.0
 	github.com/docker/spdystream v0.0.0-20181023171402-6480d4af844c // indirect
 	github.com/evanphx/json-patch/v5 v5.2.0
