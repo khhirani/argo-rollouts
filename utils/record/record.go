@@ -2,6 +2,7 @@ package record
 
 import (
 	"github.com/argoproj/argo-rollouts/notifications"
+	notificationsController "github.com/argoproj/notifications-engine/pkg/controller"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -91,8 +92,23 @@ func (e *EventRecorderAdapter) eventf(object runtime.Object, warn bool, opts Eve
 		}
 		opts.PrometheusCounter.WithLabelValues(objectMeta.GetNamespace(), objectMeta.GetName()).Inc()
 	}
-	//api, err := e.NotificationsManager.GetAPI()
-	//api.Send()
+	subscriptions := notificationsController.Subscriptions{
+		//object: object, // Change object to pass annotations
+	}
+	subs := subscriptions.GetAll(nil, map[string][]string{}).Dedup()
+	api, templates, err := e.NotificationsManager.GetAPI()
+	if err != nil {
+		return err
+	}
+	// vars -> RO (obj name -> obj)
+	//
+	for name, subscription := range subs {
+		for _, dest := range subscription {
+			api.Send(nil, templates[name], dest)
+		}
+	}
+
+
 	return nil
 }
 
