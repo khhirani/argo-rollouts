@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/antonmedv/expr v1.8.9
+	github.com/argoproj/notifications-engine v0.1.0 // indirect
 	github.com/argoproj/pkg v0.7.0
 	github.com/aws/aws-sdk-go-v2/config v1.0.0
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.0.0
@@ -54,6 +55,7 @@ require (
 )
 
 replace (
+	github.com/go-check/check => github.com/go-check/check v0.0.0-20180628173108-788fd7840127
 	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	k8s.io/api => k8s.io/api v0.20.4
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.20.4
