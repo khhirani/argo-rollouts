@@ -1,6 +1,7 @@
 package record
 
 import (
+	"github.com/argoproj/argo-rollouts/notifications"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
@@ -38,9 +39,11 @@ type EventRecorder interface {
 type EventRecorderAdapter struct {
 	// Recorder is a K8s EventRecorder
 	Recorder record.EventRecorder
+	// TODO: add comment
+	NotificationsManager notifications.NotificationsManager
 }
 
-func NewEventRecorder(kubeclientset kubernetes.Interface) EventRecorder {
+func NewEventRecorder(kubeclientset kubernetes.Interface, notificationsManager notifications.NotificationsManager) EventRecorder {
 	// Create event broadcaster
 	// Add argo-rollouts custom resources to the default Kubernetes Scheme so Events can be
 	// logged for argo-rollouts types.
@@ -49,7 +52,8 @@ func NewEventRecorder(kubeclientset kubernetes.Interface) EventRecorder {
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 	return &EventRecorderAdapter{
-		Recorder: recorder,
+		Recorder:             recorder,
+		NotificationsManager: notificationsManager,
 	}
 }
 
@@ -87,6 +91,8 @@ func (e *EventRecorderAdapter) eventf(object runtime.Object, warn bool, opts Eve
 		}
 		opts.PrometheusCounter.WithLabelValues(objectMeta.GetNamespace(), objectMeta.GetName()).Inc()
 	}
+	//api, err := e.NotificationsManager.GetAPI()
+	//api.Send()
 	return nil
 }
 

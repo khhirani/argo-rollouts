@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/argoproj/argo-rollouts/notifications"
+
 	"github.com/pkg/errors"
 	smiclientset "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	log "github.com/sirupsen/logrus"
@@ -108,6 +110,7 @@ func NewManager(
 	clusterAnalysisTemplateInformer informers.ClusterAnalysisTemplateInformer,
 	istioVirtualServiceInformer cache.SharedIndexInformer,
 	istioDestinationRuleInformer cache.SharedIndexInformer,
+	notificationsManager notifications.NotificationsManager,
 	resyncPeriod time.Duration,
 	instanceID string,
 	metricsPort int,
@@ -138,7 +141,7 @@ func NewManager(
 
 	refResolver := rollout.NewInformerBasedWorkloadRefResolver(namespace, dynamicclientset, discoveryClient, rolloutWorkqueue, rolloutsInformer.Informer())
 
-	recorder := record.NewEventRecorder(kubeclientset)
+	recorder := record.NewEventRecorder(kubeclientset, notificationsManager)
 
 	rolloutController := rollout.NewController(rollout.ControllerConfig{
 		Namespace:                       namespace,
