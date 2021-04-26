@@ -2,9 +2,8 @@ package rollout
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"strconv"
-	"strings"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -13,6 +12,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	patchtypes "k8s.io/apimachinery/pkg/types"
+	"strconv"
+	"strings"
 
 	"github.com/argoproj/argo-rollouts/pkg/apis/rollouts/v1alpha1"
 	analysisutil "github.com/argoproj/argo-rollouts/utils/analysis"
@@ -324,7 +325,7 @@ func (c *rolloutContext) reconcileBackgroundAnalysisRun() (*v1alpha1.AnalysisRun
 		return currentAr, nil
 	}
 
-	if needsNewAnalysisRun(currentAr, c.rollout) {
+	if 	needsNewAnalysisRun(currentAr, c.rollout) {
 		podHash := replicasetutil.GetPodTemplateHash(c.newRS)
 		instanceID := analysisutil.GetInstanceID(c.rollout)
 		backgroundLabels := analysisutil.BackgroundLabels(podHash, instanceID)
@@ -371,6 +372,16 @@ func (c *rolloutContext) reconcileStepBasedAnalysisRun() (*v1alpha1.AnalysisRun,
 	}
 	c.log.Infof("Reconciling analysis step (stepIndex: %d)", *index)
 	if needsNewAnalysisRun(currentAr, c.rollout) {
+		rolloutBytes, err := json.MarshalIndent(c.rollout, "", "\t")
+		if err != nil {
+			panic(err)
+		}
+		currentArBytes, err := json.MarshalIndent(currentAr, "", "\t")
+		if err != nil {
+			panic(err)
+		}
+		c.log.Infof("debug needsNewAnalysisRun - print RO: ", string(rolloutBytes))
+		c.log.Info("debug needsNewAnalysisRun - print currentAr: ", string(currentArBytes))
 		podHash := replicasetutil.GetPodTemplateHash(c.newRS)
 		instanceID := analysisutil.GetInstanceID(c.rollout)
 		stepLabels := analysisutil.StepLabels(*index, podHash, instanceID)

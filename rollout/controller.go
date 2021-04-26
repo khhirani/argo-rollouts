@@ -454,6 +454,7 @@ func (c *Controller) newRolloutContext(rollout *v1alpha1.Rollout) (*rolloutConte
 	currentArs, otherArs := analysisutil.FilterCurrentRolloutAnalysisRuns(arList, rollout)
 
 	logCtx := logutil.WithRollout(rollout)
+
 	roCtx := rolloutContext{
 		rollout:    rollout,
 		log:        logCtx,
@@ -475,6 +476,12 @@ func (c *Controller) newRolloutContext(rollout *v1alpha1.Rollout) (*rolloutConte
 		},
 		reconcilerBase: c.reconcilerBase,
 	}
+
+	currentArsNames := []string{}
+	for _, ar := range currentArs.ToArray() {
+		currentArsNames = append(currentArsNames, ar.Name)
+	}
+	roCtx.log.Info("currentArs:", currentArsNames)
 	return &roCtx, nil
 }
 
