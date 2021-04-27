@@ -3,11 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/argoproj/argo-rollouts/notifications"
 	"os"
 	"strconv"
 	"time"
-
-	"github.com/argoproj/argo-rollouts/notifications"
 
 	smiclientset "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	log "github.com/sirupsen/logrus"
@@ -134,7 +133,8 @@ func newCommand() *cobra.Command {
 			clusterDynamicInformerFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, resyncDuration, metav1.NamespaceAll, instanceIDTweakListFunc)
 			// 3. We finally need an istio dynamic informer factory which does not use a tweakListFunc.
 			istioDynamicInformerFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, resyncDuration, namespace, nil)
-			notificationsManager := notifications.NewNotificationsManager(kubeInformerFactory)
+			configMapInformer, secretInformer := kubeInformerFactory.Core().V1().ConfigMaps(), kubeInformerFactory.Core().V1().Secrets()
+			notificationsManager := notifications.NewNotificationsManager(configNS, configMapInformer, secretInformer)
 			cm := controller.NewManager(
 				namespace,
 				kubeClient,
@@ -153,7 +153,10 @@ func newCommand() *cobra.Command {
 				tolerantinformer.NewTolerantClusterAnalysisTemplateInformer(clusterDynamicInformerFactory),
 				istioDynamicInformerFactory.ForResource(istioutil.GetIstioVirtualServiceGVR()).Informer(),
 				istioDynamicInformerFactory.ForResource(istioutil.GetIstioDestinationRuleGVR()).Informer(),
+				configMapInformer,
+				secretInformer,
 				notificationsManager,
+				//notificationsManager,
 				resyncDuration,
 				instanceID,
 				metricsPort,

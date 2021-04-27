@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argo-rollout-notification-configmap
+data:
+  trigger.on-completed: |
+    - send: [my-custom-template]
+  template.my-custom-template: |
+    message: |
+      Application details: {{.rollout.metadata.name}}.
+  service.slack: |
+    token: $slack-token
+  #  Slack based notifier with name mattermost

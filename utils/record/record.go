@@ -1,6 +1,7 @@
 package record
 
 import (
+	"encoding/json"
 	"github.com/argoproj/argo-rollouts/notifications"
 	notificationsController "github.com/argoproj/notifications-engine/pkg/controller"
 	"github.com/prometheus/client_golang/prometheus"
@@ -93,18 +94,39 @@ func (e *EventRecorderAdapter) eventf(object runtime.Object, warn bool, opts Eve
 		}
 		opts.PrometheusCounter.WithLabelValues(objectMeta.GetNamespace(), objectMeta.GetName()).Inc()
 	}
-	subscriptions := notificationsController.Subscriptions(object.(metav1.Object).GetAnnotations())
-	subs := subscriptions.GetAll(nil, map[string][]string{}).Dedup()
+
+	subsFromAnnotations := notificationsController.Subscriptions(object.(metav1.Object).GetAnnotations())
+	subsByTrigger := subsFromAnnotations.GetAll(nil, map[string][]string{})
+	trigger, ok := notifications.ConditionToTrigger[opts.EventReason]
+	if !ok {
+		return nil
+	}
+
+	destinations := subsByTrigger[trigger]
+	if len(destinations) == 0 {
+		return nil
+	}
 	api, templates, err := e.NotificationsManager.GetAPI()
 	if err != nil {
 		return err
 	}
-	vars := map[string]interface{}{
-		"rollout": object,
+	objBytes, err := json.Marshal(object)
+	if err != nil {
+		return err
 	}
-	for name, subscription := range subs {
-		for _, dest := range subscription {
-			api.Send(vars, templates[name], dest)
+	var objMap map[string]interface{}
+	err = json.Unmarshal(objBytes, &objMap)
+	if err != nil {
+		return err
+	}
+	vars := map[string]interface{}{
+		"rollout": objMap,
+	}
+	for _, dest := range destinations {
+		err = api.Send(vars, templates[trigger], dest)
+		if err != nil {
+			log.Error("API Error: %s", err.Error())
+			return err
 		}
 	}
 	return nil

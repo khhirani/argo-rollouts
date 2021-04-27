@@ -77,6 +77,8 @@ type Manager struct {
 	ingressSynced                 cache.InformerSynced
 	jobSynced                     cache.InformerSynced
 	replicasSetSynced             cache.InformerSynced
+	configMapSynced				  cache.InformerSynced
+	secretSynced				  cache.InformerSynced
 
 	rolloutWorkqueue     workqueue.RateLimitingInterface
 	serviceWorkqueue     workqueue.RateLimitingInterface
@@ -110,7 +112,9 @@ func NewManager(
 	clusterAnalysisTemplateInformer informers.ClusterAnalysisTemplateInformer,
 	istioVirtualServiceInformer cache.SharedIndexInformer,
 	istioDestinationRuleInformer cache.SharedIndexInformer,
-	notificationsManager notifications.NotificationsManager,
+	configMapInformer coreinformers.ConfigMapInformer,
+	secretInformer coreinformers.SecretInformer,
+    notificationsManager notifications.NotificationsManager,
 	resyncPeriod time.Duration,
 	instanceID string,
 	metricsPort int,
@@ -230,6 +234,8 @@ func NewManager(
 		analysisTemplateSynced:        analysisTemplateInformer.Informer().HasSynced,
 		clusterAnalysisTemplateSynced: clusterAnalysisTemplateInformer.Informer().HasSynced,
 		replicasSetSynced:             replicaSetInformer.Informer().HasSynced,
+		configMapSynced: 			   configMapInformer.Informer().HasSynced,
+		secretSynced:				   secretInformer.Informer().HasSynced,
 		rolloutWorkqueue:              rolloutWorkqueue,
 		experimentWorkqueue:           experimentWorkqueue,
 		analysisRunWorkqueue:          analysisRunWorkqueue,
@@ -262,7 +268,7 @@ func (c *Manager) Run(rolloutThreadiness, serviceThreadiness, ingressThreadiness
 
 	// Wait for the caches to be synced before starting workers
 	log.Info("Waiting for controller's informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, c.serviceSynced, c.ingressSynced, c.jobSynced, c.rolloutSynced, c.experimentSynced, c.analysisRunSynced, c.analysisTemplateSynced, c.replicasSetSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, c.serviceSynced, c.ingressSynced, c.jobSynced, c.rolloutSynced, c.experimentSynced, c.analysisRunSynced, c.analysisTemplateSynced, c.replicasSetSynced, c.configMapSynced, c.secretSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 	// only wait for cluster scoped informers to sync if we are running in cluster-wide mode
