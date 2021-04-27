@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/antonmedv/expr v1.8.9
-	github.com/argoproj/notifications-engine v0.1.0
+	github.com/argoproj/notifications-engine v0.1.1-0.20210427231609-3dbc0afd92d0
 	github.com/argoproj/pkg v0.7.0
 	github.com/aws/aws-sdk-go-v2/config v1.0.0
 	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.0.0
@@ -27,7 +27,7 @@ require (
 	github.com/sirupsen/logrus v1.7.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spaceapegames/go-wavefront v1.8.1
-	github.com/spf13/cobra v1.1.1
+	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
 	github.com/tj/assert v0.0.3
 	github.com/undefinedlabs/go-mpatch v1.0.6

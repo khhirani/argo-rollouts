@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
-
+	"github.com/argoproj/argo-rollouts/notifications"
+	"github.com/argoproj/argo-rollouts/pkg/apis/rollouts/v1alpha1"
 	"github.com/argoproj/argo-rollouts/pkg/kubectl-argo-rollouts/cmd/abort"
 	"github.com/argoproj/argo-rollouts/pkg/kubectl-argo-rollouts/cmd/create"
 	"github.com/argoproj/argo-rollouts/pkg/kubectl-argo-rollouts/cmd/dashboard"
@@ -19,6 +19,9 @@ import (
 	"github.com/argoproj/argo-rollouts/pkg/kubectl-argo-rollouts/cmd/undo"
 	"github.com/argoproj/argo-rollouts/pkg/kubectl-argo-rollouts/cmd/version"
 	"github.com/argoproj/argo-rollouts/pkg/kubectl-argo-rollouts/options"
+	notificationcmd "github.com/argoproj/notifications-engine/pkg/cmd"
+	"github.com/argoproj/notifications-engine/pkg/services"
+	"github.com/spf13/cobra"
 )
 
 const (
@@ -68,5 +71,15 @@ func NewCmdArgoRollouts(o *options.ArgoRolloutsOptions) *cobra.Command {
 	cmd.AddCommand(undo.NewCmdUndo(o))
 	cmd.AddCommand(dashboard.NewCmdDashboard(o))
 	cmd.AddCommand(status.NewCmdStatus(o))
+	cmd.AddCommand(status.NewCmdStatus(o))
+	cmd.AddCommand(notificationcmd.NewToolsCommand("notifications", notificationcmd.Config{
+		Resource:      v1alpha1.RolloutGVR,
+		SecretName:    notifications.NotificationSecret,
+		ConfigMapName: notifications.NotificationConfigMap,
+		CLIName:       "kubectl argo rollouts notifications",
+		CreateVars: func(obj map[string]interface{}, _ services.Destination, _ notificationcmd.CommandContext) (map[string]interface{}, error) {
+			return map[string]interface{}{"rollout": obj}, nil
+		},
+	}))
 	return cmd
 }

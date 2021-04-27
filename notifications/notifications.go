@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"fmt"
+
 	"github.com/argoproj/argo-rollouts/utils/conditions"
 	"github.com/argoproj/notifications-engine/pkg"
 	v1 "k8s.io/api/core/v1"
@@ -10,16 +11,16 @@ import (
 
 const (
 	NotificationConfigMap = "argo-rollout-notification-configmap"
-	NotificationSecret = "argo-rollout-notification-secret"
+	NotificationSecret    = "argo-rollout-notification-secret"
 )
 
 var (
-	TriggerToCondition = map[string]string {
-		"on-paused": conditions.PausedRolloutReason,
+	TriggerToCondition = map[string]string{
+		"on-paused":    conditions.PausedRolloutReason,
 		"on-completed": conditions.RolloutCompletedReason,
 	}
-	ConditionToTrigger = map[string]string {
-		conditions.PausedRolloutReason: "on-paused",
+	ConditionToTrigger = map[string]string{
+		conditions.PausedRolloutReason:    "on-paused",
 		conditions.RolloutCompletedReason: "on-completed",
 	}
 )
@@ -29,17 +30,17 @@ type NotificationsManager interface {
 }
 
 func NewNotificationsManager(namespace string, cmInformer coreinformers.ConfigMapInformer, secretInformer coreinformers.SecretInformer) *notificationsManager {
-     return &notificationsManager{
-     	 namespace:      namespace,
-		 cmInformer:     cmInformer,
-		 secretInformer: secretInformer,
-	 }
+	return &notificationsManager{
+		namespace:      namespace,
+		cmInformer:     cmInformer,
+		secretInformer: secretInformer,
+	}
 }
 
 type notificationsManager struct {
 	//api              pkg.API
-	namespace  string
-	cmInformer coreinformers.ConfigMapInformer
+	namespace      string
+	cmInformer     coreinformers.ConfigMapInformer
 	secretInformer coreinformers.SecretInformer
 }
 
@@ -84,5 +85,3 @@ func (m *notificationsManager) GetAPI() (pkg.API, map[string][]string, error) {
 	// Cache later
 	return api, templates, err
 }
-
-
