@@ -7,6 +7,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -92,23 +93,20 @@ func (e *EventRecorderAdapter) eventf(object runtime.Object, warn bool, opts Eve
 		}
 		opts.PrometheusCounter.WithLabelValues(objectMeta.GetNamespace(), objectMeta.GetName()).Inc()
 	}
-	subscriptions := notificationsController.Subscriptions{
-		//object: object, // Change object to pass annotations
-	}
+	subscriptions := notificationsController.Subscriptions(object.(metav1.Object).GetAnnotations())
 	subs := subscriptions.GetAll(nil, map[string][]string{}).Dedup()
 	api, templates, err := e.NotificationsManager.GetAPI()
 	if err != nil {
 		return err
 	}
-	// vars -> RO (obj name -> obj)
-	//
+	vars := map[string]interface{}{
+		"rollout": object,
+	}
 	for name, subscription := range subs {
 		for _, dest := range subscription {
-			api.Send(nil, templates[name], dest)
+			api.Send(vars, templates[name], dest)
 		}
 	}
-
-
 	return nil
 }
 
