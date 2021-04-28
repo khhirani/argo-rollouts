@@ -6,3 +6,6 @@ resources:
 
 patchesStrategicMerge:
 - on-completed.yaml
+- on-scaling-replicaset.yaml
+- on-step-completed.yaml
+- on-updated.yaml

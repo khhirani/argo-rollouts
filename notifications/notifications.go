@@ -16,12 +16,18 @@ const (
 
 var (
 	TriggerToCondition = map[string]string{
-		"on-paused":    conditions.PausedRolloutReason,
+		//"on-paused":    conditions.PausedRolloutReason,
 		"on-completed": conditions.RolloutCompletedReason,
+		"on-step-completed": conditions.RolloutStepCompletedReason,
+		"on-scaling-replicaset": conditions.ScalingReplicaSetReason,
+		"on-update": conditions.RolloutUpdatedReason,
 	}
 	ConditionToTrigger = map[string]string{
-		conditions.PausedRolloutReason:    "on-paused",
+		//conditions.PausedRolloutReason:    "on-paused",
 		conditions.RolloutCompletedReason: "on-completed",
+		conditions.RolloutStepCompletedReason: "on-step-completed",
+		conditions.ScalingReplicaSetReason: "on-scaling-replicaset",
+		conditions.RolloutUpdatedReason: "on-update",
 	}
 )
 
