@@ -160,7 +160,7 @@ func (e *EventRecorderAdapter) sendNotifications(object runtime.Object, opts Eve
 	for _, dest := range destinations {
 		err = api.Send(vars, templates[trigger], dest)
 		if err != nil {
-			log.Error("API Error: %s", err.Error())
+			log.Error("notification error: %s", err.Error())
 			return err
 		}
 	}
@@ -181,11 +181,14 @@ func (e *EventRecorderAdapter) GetAPI(namespace string) (pkg.API, map[string][]s
 		return nil, nil, err
 	}
 
+	// optional
+	// only necessary if notification configmap references secret
 	secretKey := fmt.Sprintf("%s/%s", namespace, NotificationSecret)
-	secret, exists, err := e.secretInformer.Informer().GetStore().GetByKey(secretKey)
-	if !exists {
-		//log.Warnf("notification secret %s does not exist", NotificationSecret)
-		return nil, nil, fmt.Errorf("notification secret %s does not exist", NotificationSecret)
+	secret, secretExists, err := e.secretInformer.Informer().GetStore().GetByKey(secretKey)
+	if !secretExists {
+		log.Warnf("notification secret %s does not exist", NotificationSecret)
+		secret = &corev1.Secret{}
+		//return nil, nil, fmt.Errorf("notification secret %s does not exist", NotificationSecret)
 	}
 	if err != nil {
 		return nil, nil, err
