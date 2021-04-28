@@ -2,7 +2,9 @@ package record
 
 import (
 	"encoding/json"
-	"github.com/argoproj/argo-rollouts/notifications"
+	"fmt"
+	"github.com/argoproj/argo-rollouts/utils/conditions"
+	"github.com/argoproj/notifications-engine/pkg"
 	notificationsController "github.com/argoproj/notifications-engine/pkg/controller"
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
@@ -10,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	typedcorev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/record"
@@ -18,7 +21,28 @@ import (
 	logutil "github.com/argoproj/argo-rollouts/utils/log"
 )
 
-const controllerAgentName = "rollouts-controller"
+const (
+    controllerAgentName = "rollouts-controller"
+	NotificationConfigMap = "argo-rollouts-notification-configmap"
+	NotificationSecret = "argo-rollouts-notification-secret"
+)
+
+var (
+	TriggerToCondition = map[string]string{
+		//"on-paused":    conditions.PausedRolloutReason,
+		"on-completed": conditions.RolloutCompletedReason,
+		"on-step-completed": conditions.RolloutStepCompletedReason,
+		"on-scaling-replicaset": conditions.ScalingReplicaSetReason,
+		"on-update": conditions.RolloutUpdatedReason,
+	}
+	ConditionToTrigger = map[string]string{
+		//conditions.PausedRolloutReason:    "on-paused",
+		conditions.RolloutCompletedReason: "on-completed",
+		conditions.RolloutStepCompletedReason: "on-step-completed",
+		conditions.ScalingReplicaSetReason: "on-scaling-replicaset",
+		conditions.RolloutUpdatedReason: "on-update",
+	}
+)
 
 type EventOptions struct {
 	// EventType is the kubernetes event type (Normal or Warning). Defaults to Normal
@@ -43,10 +67,13 @@ type EventRecorderAdapter struct {
 	// Recorder is a K8s EventRecorder
 	Recorder record.EventRecorder
 	// TODO: add comment
-	NotificationsManager notifications.NotificationsManager
+	// ConfigMapInformer to retrieve NotificationConfigMap
+	cmInformer     coreinformers.ConfigMapInformer
+	// SecretInformer to retrieve NotificationSecret
+	secretInformer coreinformers.SecretInformer
 }
 
-func NewEventRecorder(kubeclientset kubernetes.Interface, notificationsManager notifications.NotificationsManager) EventRecorder {
+func NewEventRecorder(kubeclientset kubernetes.Interface, cmInformer coreinformers.ConfigMapInformer, secretInformer coreinformers.SecretInformer) EventRecorder {
 	// Create event broadcaster
 	// Add argo-rollouts custom resources to the default Kubernetes Scheme so Events can be
 	// logged for argo-rollouts types.
@@ -56,7 +83,8 @@ func NewEventRecorder(kubeclientset kubernetes.Interface, notificationsManager n
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 	return &EventRecorderAdapter{
 		Recorder:             recorder,
-		NotificationsManager: notificationsManager,
+		cmInformer: cmInformer,
+		secretInformer: secretInformer,
 	}
 }
 
@@ -97,7 +125,7 @@ func (e *EventRecorderAdapter) eventf(object runtime.Object, warn bool, opts Eve
 
 	subsFromAnnotations := notificationsController.Subscriptions(object.(metav1.Object).GetAnnotations())
 	subsByTrigger := subsFromAnnotations.GetAll(nil, map[string][]string{})
-	trigger, ok := notifications.ConditionToTrigger[opts.EventReason]
+	trigger, ok := ConditionToTrigger[opts.EventReason]
 	if !ok {
 		return nil
 	}
@@ -106,7 +134,13 @@ func (e *EventRecorderAdapter) eventf(object runtime.Object, warn bool, opts Eve
 	if len(destinations) == 0 {
 		return nil
 	}
-	api, templates, err := e.NotificationsManager.GetAPI()
+
+	objectMeta, err := meta.Accessor(object)
+	if err != nil {
+		return err
+	}
+	namespace := objectMeta.GetNamespace()
+	api, templates, err := e.GetAPI(namespace)
 	if err != nil {
 		return err
 	}
@@ -134,4 +168,46 @@ func (e *EventRecorderAdapter) eventf(object runtime.Object, warn bool, opts Eve
 
 func (e *EventRecorderAdapter) K8sRecorder() record.EventRecorder {
 	return e.Recorder
+}
+
+func (e *EventRecorderAdapter) GetAPI(namespace string) (pkg.API, map[string][]string, error) {
+	configMapKey := fmt.Sprintf("%s/%s", namespace, NotificationConfigMap)
+	configMap, exists, err := e.cmInformer.Informer().GetStore().GetByKey(configMapKey)
+	if !exists {
+		return nil, nil, fmt.Errorf("notification configMap %s does not exist", NotificationConfigMap)
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// +optional
+	// secret only necessary if referenced in ConfigMap
+	secretKey := fmt.Sprintf("%s/%s", namespace, NotificationSecret)
+	secret, exists, err := e.secretInformer.Informer().GetStore().GetByKey(secretKey)
+	if !exists {
+		log.Warnf("notification secret %s does not exist", NotificationSecret)
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	templates := map[string][]string{}
+
+	// Creates config for notifications
+	cfg, err := pkg.ParseConfig(configMap.(*corev1.ConfigMap), secret.(*corev1.Secret))
+	for name, triggers := range cfg.Triggers {
+		if _, ok := TriggerToCondition[name]; ok { // match event names from RO
+			templates[name] = triggers[0].Send
+			delete(cfg.Triggers, name)
+		}
+
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+
+	api, err := pkg.NewAPI(*cfg)
+
+	// TODO: Cache API
+	return api, templates, err
 }

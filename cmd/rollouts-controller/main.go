@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/argoproj/argo-rollouts/notifications"
 	"os"
 	"strconv"
 	"time"
@@ -134,7 +133,6 @@ func newCommand() *cobra.Command {
 			// 3. We finally need an istio dynamic informer factory which does not use a tweakListFunc.
 			istioDynamicInformerFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(dynamicClient, resyncDuration, namespace, nil)
 			configMapInformer, secretInformer := kubeInformerFactory.Core().V1().ConfigMaps(), kubeInformerFactory.Core().V1().Secrets()
-			notificationsManager := notifications.NewNotificationsManager(configNS, configMapInformer, secretInformer)
 			cm := controller.NewManager(
 				namespace,
 				kubeClient,
@@ -155,8 +153,6 @@ func newCommand() *cobra.Command {
 				istioDynamicInformerFactory.ForResource(istioutil.GetIstioDestinationRuleGVR()).Informer(),
 				configMapInformer,
 				secretInformer,
-				notificationsManager,
-				//notificationsManager,
 				resyncDuration,
 				instanceID,
 				metricsPort,
