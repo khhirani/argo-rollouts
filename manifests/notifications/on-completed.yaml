@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: argo-rollout-notification-configmap
+  name: argo-rollouts-notification-configmap
 data:
   trigger.on-completed: |
     - send: [rollout-completed]

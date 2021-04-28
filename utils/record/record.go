@@ -28,20 +28,14 @@ const (
 )
 
 var (
-	TriggerToCondition = map[string]string{
+	BuiltInTriggers = map[string]string{
 		//"on-paused":    conditions.PausedRolloutReason,
 		"on-completed": conditions.RolloutCompletedReason,
 		"on-step-completed": conditions.RolloutStepCompletedReason,
 		"on-scaling-replicaset": conditions.ScalingReplicaSetReason,
 		"on-update": conditions.RolloutUpdatedReason,
 	}
-	ConditionToTrigger = map[string]string{
-		//conditions.PausedRolloutReason:    "on-paused",
-		conditions.RolloutCompletedReason: "on-completed",
-		conditions.RolloutStepCompletedReason: "on-step-completed",
-		conditions.ScalingReplicaSetReason: "on-scaling-replicaset",
-		conditions.RolloutUpdatedReason: "on-update",
-	}
+	EventReasonToTrigger = reverseMap(BuiltInTriggers)
 )
 
 type EventOptions struct {
@@ -123,9 +117,15 @@ func (e *EventRecorderAdapter) eventf(object runtime.Object, warn bool, opts Eve
 		opts.PrometheusCounter.WithLabelValues(objectMeta.GetNamespace(), objectMeta.GetName()).Inc()
 	}
 
+	return e.sendNotifications(object, opts)
+}
+
+// Send notifications for triggered event if user is subscribed
+func (e *EventRecorderAdapter) sendNotifications(object runtime.Object, opts EventOptions) error {
 	subsFromAnnotations := notificationsController.Subscriptions(object.(metav1.Object).GetAnnotations())
 	subsByTrigger := subsFromAnnotations.GetAll(nil, map[string][]string{})
-	trigger, ok := ConditionToTrigger[opts.EventReason]
+
+	trigger, ok := EventReasonToTrigger[opts.EventReason]
 	if !ok {
 		return nil
 	}
@@ -140,6 +140,7 @@ func (e *EventRecorderAdapter) eventf(object runtime.Object, warn bool, opts Eve
 		return err
 	}
 	namespace := objectMeta.GetNamespace()
+
 	api, templates, err := e.GetAPI(namespace)
 	if err != nil {
 		return err
@@ -180,23 +181,21 @@ func (e *EventRecorderAdapter) GetAPI(namespace string) (pkg.API, map[string][]s
 		return nil, nil, err
 	}
 
-	// +optional
-	// secret only necessary if referenced in ConfigMap
 	secretKey := fmt.Sprintf("%s/%s", namespace, NotificationSecret)
 	secret, exists, err := e.secretInformer.Informer().GetStore().GetByKey(secretKey)
 	if !exists {
-		log.Warnf("notification secret %s does not exist", NotificationSecret)
+		//log.Warnf("notification secret %s does not exist", NotificationSecret)
+		return nil, nil, fmt.Errorf("notification secret %s does not exist", NotificationSecret)
 	}
 	if err != nil {
 		return nil, nil, err
 	}
 
+	// Creates config for notifications for built-in triggers
 	templates := map[string][]string{}
-
-	// Creates config for notifications
 	cfg, err := pkg.ParseConfig(configMap.(*corev1.ConfigMap), secret.(*corev1.Secret))
 	for name, triggers := range cfg.Triggers {
-		if _, ok := TriggerToCondition[name]; ok { // match event names from RO
+		if _, ok := BuiltInTriggers[name]; ok {
 			templates[name] = triggers[0].Send
 			delete(cfg.Triggers, name)
 		}
@@ -210,4 +209,12 @@ func (e *EventRecorderAdapter) GetAPI(namespace string) (pkg.API, map[string][]s
 
 	// TODO: Cache API
 	return api, templates, err
+}
+
+func reverseMap(m map[string]string) map[string]string {
+	n := make(map[string]string)
+	for k, v := range m {
+		n[v] = k
+	}
+	return n
 }
