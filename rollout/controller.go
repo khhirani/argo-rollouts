@@ -8,10 +8,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/argoproj/notifications-engine/pkg"
+	"k8s.io/apimachinery/pkg/types"
+
 	notificationsController "github.com/argoproj/notifications-engine/pkg/controller"
-	"github.com/argoproj/notifications-engine/pkg/services"
-	"github.com/argoproj/notifications-engine/pkg/triggers"
 	smiclientset "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -387,32 +386,82 @@ func (c *Controller) syncHandler(key string) error {
 	if err != nil {
 		return err
 	}
-	err = c.processApp(r, roCtx.log)
-	if err != nil {
-		logCtx.Warnf("error sending custom notifications: %s", err.Error())
-	}
 	err = roCtx.reconcile()
+
 	if roCtx.newRollout != nil {
 		c.writeBackToInformer(roCtx.newRollout)
 	}
+
+	c.handleNotifications(r, roCtx.log)
 	return err
 }
 
-func (c *Controller) processApp(r *v1alpha1.Rollout, logEntry *log.Entry) error {
-	appBytes, err := json.Marshal(r)
-	if err != nil {
-		return err
-	}
-	var app *unstructured.Unstructured
-	err = json.Unmarshal(appBytes, &app)
-	if err != nil {
-		return err
+func mapsEqual(first, second map[string]string) bool {
+	if first == nil {
+		first = map[string]string{}
 	}
 
-	appState := notificationsController.NewStateFromRes(app)
+	if second == nil {
+		second = map[string]string{}
+	}
 
+	return reflect.DeepEqual(first, second)
+}
+
+func (c *Controller) handleNotifications(r *v1alpha1.Rollout, logEntry *log.Entry) {
+	rolloutCopy := r.DeepCopy()
+	err := c.processNotifications(rolloutCopy, logEntry)
+	if err != nil {
+		logEntry.Errorf("Failed to process: %v", err)
+		return
+	}
+
+	if !mapsEqual(r.GetAnnotations(), rolloutCopy.GetAnnotations()) {
+		annotationsPatch := make(map[string]interface{})
+		for k, v := range rolloutCopy.GetAnnotations() {
+			annotationsPatch[k] = v
+		}
+		for k := range r.GetAnnotations() {
+			if _, ok := rolloutCopy.GetAnnotations()[k]; !ok {
+				annotationsPatch[k] = nil
+			}
+		}
+
+		patchData, err := json.Marshal(map[string]map[string]interface{}{
+			"metadata": {"annotations": annotationsPatch},
+		})
+		if err != nil {
+			logEntry.Errorf("Failed to marshal app patch: %v", err)
+			return
+		}
+		r, err = c.reconcilerBase.argoprojclientset.ArgoprojV1alpha1().Rollouts(r.Namespace).Patch(context.Background(), r.GetName(), types.MergePatchType, patchData, metav1.PatchOptions{})
+		if err != nil {
+			logEntry.Errorf("Failed to patch app: %v", err)
+			return
+		}
+		c.writeBackToInformer(r)
+	}
+	logEntry.Info("Processing completed")
+}
+
+func (c *Controller) processNotifications(r *v1alpha1.Rollout, logEntry *log.Entry) error {
 	subsFromAnnotations := notificationsController.Subscriptions(r.Annotations)
 	subsByTrigger := subsFromAnnotations.GetAll(nil, map[string][]string{})
+	if len(subsByTrigger) == 0 {
+		return nil
+	}
+
+	rolloutBytes, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	var rollout *unstructured.Unstructured
+	err = json.Unmarshal(rolloutBytes, &rollout)
+	if err != nil {
+		return err
+	}
+
+	rolloutState := notificationsController.NewStateFromRes(rollout)
 
 	api, _, err := c.recorder.GetAPI()
 	if err != nil {
@@ -420,10 +469,13 @@ func (c *Controller) processApp(r *v1alpha1.Rollout, logEntry *log.Entry) error 
 	}
 
 	vars := map[string]interface{}{
-		"rollout": app.Object,
+		"rollout": rollout.Object,
 	}
 
 	for trigger, destinations := range subsByTrigger {
+		if _, isBuiltIn := record.BuiltInTriggers[trigger]; isBuiltIn {
+			continue
+		}
 
 		res, err := api.RunTrigger(trigger, vars)
 		if err != nil {
@@ -436,52 +488,35 @@ func (c *Controller) processApp(r *v1alpha1.Rollout, logEntry *log.Entry) error 
 
 			if !cr.Triggered {
 				for _, to := range destinations {
-					appState.SetAlreadyNotified(trigger, cr, to, false)
+					rolloutState.SetAlreadyNotified(trigger, cr, to, false)
 				}
 				continue
 			}
 
 			for _, to := range destinations {
-				if err := c.sendNotification(app, logEntry, appState, trigger, cr, to, api); err != nil {
-					return err
+				if changed := rolloutState.SetAlreadyNotified(trigger, cr, to, true); !changed {
+					logEntry.Infof("Notification about condition '%s.%s' already sent to '%v'", trigger, cr.Key, to)
+				} else {
+					logEntry.Infof("Sending notification about condition '%s.%s' to '%v'", trigger, cr.Key, to)
+					vars := map[string]interface{}{
+						"rollout": rollout.Object,
+					}
+
+					if err := api.Send(vars, cr.Templates, to); err != nil {
+						logEntry.Errorf("Failed to notify recipient %s defined in app %s/%s: %v",
+							to, r.GetNamespace(), r.GetName(), err)
+						rolloutState.SetAlreadyNotified(trigger, cr, to, false)
+						//c.metricsRegistry.IncDeliveriesCounter(trigger, to.Service, false)
+					} else {
+						logEntry.Debugf("Notification %s was sent", to.Recipient)
+						//c.metricsRegistry.IncDeliveriesCounter(trigger, to.Service, true)
+					}
 				}
 			}
 		}
 	}
 
-	return appState.Persist(app)
-}
-
-func (c *Controller) sendNotification(
-	app *unstructured.Unstructured,
-	logEntry *log.Entry,
-	appState notificationsController.NotificationsState,
-	trigger string,
-	cr triggers.ConditionResult,
-	to services.Destination,
-	api pkg.API,
-) error {
-	if changed := appState.SetAlreadyNotified(trigger, cr, to, true); !changed {
-		logEntry.Infof("Notification about condition '%s.%s' already sent to '%v'", trigger, cr.Key, to)
-		return nil
-	} else {
-		logEntry.Infof("Sending notification about condition '%s.%s' to '%v'", trigger, cr.Key, to)
-		vars := map[string]interface{}{
-			"rollout": app.Object,
-		}
-
-		if err := api.Send(vars, cr.Templates, to); err != nil {
-			logEntry.Errorf("Failed to notify recipient %s defined in app %s/%s: %v",
-				to, app.GetNamespace(), app.GetName(), err)
-			appState.SetAlreadyNotified(trigger, cr, to, false)
-			//c.metricsRegistry.IncDeliveriesCounter(trigger, to.Service, false)
-		} else {
-			logEntry.Debugf("Notification %s was sent", to.Recipient)
-			//c.metricsRegistry.IncDeliveriesCounter(trigger, to.Service, true)
-		}
-
-		return nil
-	}
+	return rolloutState.Persist(r)
 }
 
 // writeBackToInformer writes a just recently updated Rollout back into the informer cache.

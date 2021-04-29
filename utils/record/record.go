@@ -200,7 +200,6 @@ func (e *EventRecorderAdapter) GetAPI() (pkg.API, map[string][]string, error) {
 			templates[name] = triggers[0].Send
 			delete(cfg.Triggers, name)
 		}
-
 	}
 	if err != nil {
 		return nil, nil, err
