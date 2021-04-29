@@ -18,12 +18,12 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
-	github.com/newrelic/newrelic-client-go v0.49.0
+	github.com/newrelic/newrelic-client-go v0.58.5
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.8.0
 	github.com/prometheus/common v0.18.0
 	github.com/servicemeshinterface/smi-sdk-go v0.4.1
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spaceapegames/go-wavefront v1.8.1
 	github.com/spf13/cobra v1.1.1
