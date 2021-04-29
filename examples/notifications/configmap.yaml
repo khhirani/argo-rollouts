@@ -7,14 +7,14 @@ data:
     - send: [my-custom-template]
   trigger.on-paused: |
     - send: [my-paused-template]
-      when: {{.rollout.status.controllerPause}} != nil
+      when: rollout.status.controllerPause != nil and rollout.status.controllerPause
 
   template.my-custom-template: |
     message: |
       Application details: {{.rollout.metadata.name}}.
   template.my-paused-template: |
     message: |
-      Application details: {{.rollout.metadata.name}}. is paused
+      Application details: {{.rollout.metadata.name}} is paused
   service.slack: |
     token: $slack-token
   #  Slack based notifier with name mattermost
