@@ -54,6 +54,7 @@ type EventRecorder interface {
 	Eventf(object runtime.Object, opts EventOptions, messageFmt string, args ...interface{}) error
 	Warnf(object runtime.Object, opts EventOptions, messageFmt string, args ...interface{}) error
 	K8sRecorder() record.EventRecorder
+	GetAPI(namespace string) (pkg.API, map[string][]string, error)
 }
 
 // EventRecorderAdapter implements the EventRecorder interface

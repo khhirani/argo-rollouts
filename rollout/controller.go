@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"reflect"
-	"strconv"
-	"time"
-
+	"github.com/argoproj/notifications-engine/pkg"
+	notificationsController "github.com/argoproj/notifications-engine/pkg/controller"
+	"github.com/argoproj/notifications-engine/pkg/services"
+	"github.com/argoproj/notifications-engine/pkg/triggers"
 	smiclientset "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	appsv1 "k8s.io/api/apps/v1"
@@ -32,6 +32,9 @@ import (
 	"k8s.io/kubectl/pkg/util/slice"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/utils/pointer"
+	"reflect"
+	"strconv"
+	"time"
 
 	"github.com/argoproj/argo-rollouts/controller/metrics"
 	register "github.com/argoproj/argo-rollouts/pkg/apis/rollouts"
@@ -383,11 +386,101 @@ func (c *Controller) syncHandler(key string) error {
 	if err != nil {
 		return err
 	}
+	err = c.processApp(r, roCtx.log)
+	if err != nil {
+		logCtx.Warnf("error sending custom notifications: %s", err.Error())
+	}
 	err = roCtx.reconcile()
 	if roCtx.newRollout != nil {
 		c.writeBackToInformer(roCtx.newRollout)
 	}
 	return err
+}
+
+func (c *Controller) processApp(r *v1alpha1.Rollout, logEntry *log.Entry) error {
+	appBytes, err := json.Marshal(r)
+	if err != nil {
+		return err
+	}
+	var app *unstructured.Unstructured
+	err = json.Unmarshal(appBytes, &app)
+	if err != nil {
+		return err
+	}
+
+	appState := notificationsController.NewStateFromRes(app)
+
+	subsFromAnnotations := notificationsController.Subscriptions(r.Annotations)
+	subsByTrigger := subsFromAnnotations.GetAll(nil, map[string][]string{})
+
+	api, _, err := c.recorder.GetAPI(r.Namespace)
+	if err != nil {
+		return err
+	}
+
+	vars := map[string]interface{}{
+		"rollout": app.Object,
+	}
+
+	for trigger, destinations := range subsByTrigger {
+
+		res, err := api.RunTrigger(trigger, vars)
+		if err != nil {
+			logEntry.Debugf("Failed to execute condition of trigger %s: %v", trigger, err)
+		}
+		logEntry.Infof("Trigger %s result: %v", trigger, res)
+
+		for _, cr := range res {
+			//c.metricsRegistry.IncTriggerEvaluationsCounter(trigger, cr.Triggered)
+
+			if !cr.Triggered {
+				for _, to := range destinations {
+					appState.SetAlreadyNotified(trigger, cr, to, false)
+				}
+				continue
+			}
+
+			for _, to := range destinations {
+				if err := c.sendNotification(app, logEntry, appState, trigger, cr, to, api); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	return appState.Persist(app)
+}
+
+func (c *Controller) sendNotification(
+	app *unstructured.Unstructured,
+	logEntry *log.Entry,
+	appState notificationsController.NotificationsState,
+	trigger string,
+	cr triggers.ConditionResult,
+	to services.Destination,
+	api pkg.API,
+) error {
+	if changed := appState.SetAlreadyNotified(trigger, cr, to, true); !changed {
+		logEntry.Infof("Notification about condition '%s.%s' already sent to '%v'", trigger, cr.Key, to)
+		return nil
+	} else {
+		logEntry.Infof("Sending notification about condition '%s.%s' to '%v'", trigger, cr.Key, to)
+		vars := map[string]interface{}{
+			"rollout": app.Object,
+		}
+
+		if err := api.Send(vars, cr.Templates, to); err != nil {
+			logEntry.Errorf("Failed to notify recipient %s defined in app %s/%s: %v",
+				to, app.GetNamespace(), app.GetName(), err)
+			appState.SetAlreadyNotified(trigger, cr, to, false)
+			//c.metricsRegistry.IncDeliveriesCounter(trigger, to.Service, false)
+		} else {
+			logEntry.Debugf("Notification %s was sent", to.Recipient)
+			//c.metricsRegistry.IncDeliveriesCounter(trigger, to.Service, true)
+		}
+
+		return nil
+	}
 }
 
 // writeBackToInformer writes a just recently updated Rollout back into the informer cache.
