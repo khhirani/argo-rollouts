@@ -37,6 +37,7 @@ metadata:
   name: rollout-canary
   annotations:
     notifications.argoproj.io/subscribe.on-step-completed.slack: argoproj-deployments-notifications
+    notifications.argoproj.io/subscribe.on-purple.slack: argoproj-deployments-notifications
 spec:
   replicas: 5
   revisionHistoryLimit: 2
@@ -62,8 +63,8 @@ spec:
       # Rollouts can be manually resumed by running `kubectl argo rollouts promote ROLLOUT`
       - pause: {}
       - setWeight: 40
-      - pause: {duration: 5s}
+      - pause: {duration: 10s}
       - setWeight: 60
-      - pause: {duration: 5s}
+      - pause: {duration: 10s}
       - setWeight: 80
-      - pause: {duration: 5s}
+      - pause: {duration: 10s}

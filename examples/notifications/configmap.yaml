@@ -5,3 +5,16 @@ metadata:
 data:
   service.slack: |
     token: $slack-token
+  ## Custom Trigger
+  trigger.on-purple: |
+    - send: [my-purple-template]
+      when: rollout.spec.template.spec.containers[0].image == 'argoproj/rollouts-demo:purple'
+  template.my-purple-template: |
+    message: |
+      Application details: {{.rollout.metadata.name}} has purple image
+    slack:
+        attachments: |
+            [{
+              "title": "{{ .rollout.metadata.name}}",
+              "color": "#800080"
+            }]
