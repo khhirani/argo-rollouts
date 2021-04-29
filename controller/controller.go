@@ -31,6 +31,7 @@ import (
 	informers "github.com/argoproj/argo-rollouts/pkg/client/informers/externalversions/rollouts/v1alpha1"
 	"github.com/argoproj/argo-rollouts/rollout"
 	"github.com/argoproj/argo-rollouts/service"
+	"github.com/argoproj/argo-rollouts/utils/defaults"
 	"github.com/argoproj/argo-rollouts/utils/record"
 )
 
@@ -75,8 +76,8 @@ type Manager struct {
 	ingressSynced                 cache.InformerSynced
 	jobSynced                     cache.InformerSynced
 	replicasSetSynced             cache.InformerSynced
-	configMapSynced				  cache.InformerSynced
-	secretSynced				  cache.InformerSynced
+	configMapSynced               cache.InformerSynced
+	secretSynced                  cache.InformerSynced
 
 	rolloutWorkqueue     workqueue.RateLimitingInterface
 	serviceWorkqueue     workqueue.RateLimitingInterface
@@ -142,7 +143,7 @@ func NewManager(
 
 	refResolver := rollout.NewInformerBasedWorkloadRefResolver(namespace, dynamicclientset, discoveryClient, rolloutWorkqueue, rolloutsInformer.Informer())
 
-	recorder := record.NewEventRecorder(kubeclientset, configMapInformer, secretInformer)
+	recorder := record.NewEventRecorder(kubeclientset, defaults.Namespace(), configMapInformer, secretInformer)
 
 	rolloutController := rollout.NewController(rollout.ControllerConfig{
 		Namespace:                       namespace,
@@ -231,8 +232,8 @@ func NewManager(
 		analysisTemplateSynced:        analysisTemplateInformer.Informer().HasSynced,
 		clusterAnalysisTemplateSynced: clusterAnalysisTemplateInformer.Informer().HasSynced,
 		replicasSetSynced:             replicaSetInformer.Informer().HasSynced,
-		configMapSynced: 			   configMapInformer.Informer().HasSynced,
-		secretSynced:				   secretInformer.Informer().HasSynced,
+		configMapSynced:               configMapInformer.Informer().HasSynced,
+		secretSynced:                  secretInformer.Informer().HasSynced,
 		rolloutWorkqueue:              rolloutWorkqueue,
 		experimentWorkqueue:           experimentWorkqueue,
 		analysisRunWorkqueue:          analysisRunWorkqueue,

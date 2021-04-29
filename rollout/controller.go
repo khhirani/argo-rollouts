@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"reflect"
+	"strconv"
+	"time"
+
 	"github.com/argoproj/notifications-engine/pkg"
 	notificationsController "github.com/argoproj/notifications-engine/pkg/controller"
 	"github.com/argoproj/notifications-engine/pkg/services"
@@ -32,9 +36,6 @@ import (
 	"k8s.io/kubectl/pkg/util/slice"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/utils/pointer"
-	"reflect"
-	"strconv"
-	"time"
 
 	"github.com/argoproj/argo-rollouts/controller/metrics"
 	register "github.com/argoproj/argo-rollouts/pkg/apis/rollouts"
@@ -413,7 +414,7 @@ func (c *Controller) processApp(r *v1alpha1.Rollout, logEntry *log.Entry) error 
 	subsFromAnnotations := notificationsController.Subscriptions(r.Annotations)
 	subsByTrigger := subsFromAnnotations.GetAll(nil, map[string][]string{})
 
-	api, _, err := c.recorder.GetAPI(r.Namespace)
+	api, _, err := c.recorder.GetAPI()
 	if err != nil {
 		return err
 	}

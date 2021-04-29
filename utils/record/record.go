@@ -3,6 +3,7 @@ package record
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/argoproj/argo-rollouts/utils/conditions"
 	"github.com/argoproj/notifications-engine/pkg"
 	notificationsController "github.com/argoproj/notifications-engine/pkg/controller"
@@ -22,18 +23,18 @@ import (
 )
 
 const (
-    controllerAgentName = "rollouts-controller"
+	controllerAgentName   = "rollouts-controller"
 	NotificationConfigMap = "argo-rollouts-notification-configmap"
-	NotificationSecret = "argo-rollouts-notification-secret"
+	NotificationSecret    = "argo-rollouts-notification-secret"
 )
 
 var (
 	BuiltInTriggers = map[string]string{
 		//"on-paused":    conditions.PausedRolloutReason,
-		"on-completed": conditions.RolloutCompletedReason,
-		"on-step-completed": conditions.RolloutStepCompletedReason,
+		"on-completed":          conditions.RolloutCompletedReason,
+		"on-step-completed":     conditions.RolloutStepCompletedReason,
 		"on-scaling-replicaset": conditions.ScalingReplicaSetReason,
-		"on-update": conditions.RolloutUpdatedReason,
+		"on-update":             conditions.RolloutUpdatedReason,
 	}
 	EventReasonToTrigger = reverseMap(BuiltInTriggers)
 )
@@ -54,7 +55,7 @@ type EventRecorder interface {
 	Eventf(object runtime.Object, opts EventOptions, messageFmt string, args ...interface{}) error
 	Warnf(object runtime.Object, opts EventOptions, messageFmt string, args ...interface{}) error
 	K8sRecorder() record.EventRecorder
-	GetAPI(namespace string) (pkg.API, map[string][]string, error)
+	GetAPI() (pkg.API, map[string][]string, error)
 }
 
 // EventRecorderAdapter implements the EventRecorder interface
@@ -63,12 +64,13 @@ type EventRecorderAdapter struct {
 	Recorder record.EventRecorder
 	// TODO: add comment
 	// ConfigMapInformer to retrieve NotificationConfigMap
-	cmInformer     coreinformers.ConfigMapInformer
+	cmInformer coreinformers.ConfigMapInformer
 	// SecretInformer to retrieve NotificationSecret
 	secretInformer coreinformers.SecretInformer
+	namespace      string
 }
 
-func NewEventRecorder(kubeclientset kubernetes.Interface, cmInformer coreinformers.ConfigMapInformer, secretInformer coreinformers.SecretInformer) EventRecorder {
+func NewEventRecorder(kubeclientset kubernetes.Interface, namespace string, cmInformer coreinformers.ConfigMapInformer, secretInformer coreinformers.SecretInformer) EventRecorder {
 	// Create event broadcaster
 	// Add argo-rollouts custom resources to the default Kubernetes Scheme so Events can be
 	// logged for argo-rollouts types.
@@ -77,9 +79,10 @@ func NewEventRecorder(kubeclientset kubernetes.Interface, cmInformer coreinforme
 	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 	return &EventRecorderAdapter{
-		Recorder:             recorder,
-		cmInformer: cmInformer,
+		Recorder:       recorder,
+		cmInformer:     cmInformer,
 		secretInformer: secretInformer,
+		namespace:      namespace,
 	}
 }
 
@@ -136,13 +139,7 @@ func (e *EventRecorderAdapter) sendNotifications(object runtime.Object, opts Eve
 		return nil
 	}
 
-	objectMeta, err := meta.Accessor(object)
-	if err != nil {
-		return err
-	}
-	namespace := objectMeta.GetNamespace()
-
-	api, templates, err := e.GetAPI(namespace)
+	api, templates, err := e.GetAPI()
 	if err != nil {
 		return err
 	}
@@ -172,8 +169,8 @@ func (e *EventRecorderAdapter) K8sRecorder() record.EventRecorder {
 	return e.Recorder
 }
 
-func (e *EventRecorderAdapter) GetAPI(namespace string) (pkg.API, map[string][]string, error) {
-	configMapKey := fmt.Sprintf("%s/%s", namespace, NotificationConfigMap)
+func (e *EventRecorderAdapter) GetAPI() (pkg.API, map[string][]string, error) {
+	configMapKey := fmt.Sprintf("%s/%s", e.namespace, NotificationConfigMap)
 	configMap, exists, err := e.cmInformer.Informer().GetStore().GetByKey(configMapKey)
 	if !exists {
 		return nil, nil, fmt.Errorf("notification configMap %s does not exist", NotificationConfigMap)
@@ -184,7 +181,7 @@ func (e *EventRecorderAdapter) GetAPI(namespace string) (pkg.API, map[string][]s
 
 	// optional
 	// only necessary if notification configmap references secret
-	secretKey := fmt.Sprintf("%s/%s", namespace, NotificationSecret)
+	secretKey := fmt.Sprintf("%s/%s", e.namespace, NotificationSecret)
 	secret, secretExists, err := e.secretInformer.Informer().GetStore().GetByKey(secretKey)
 	if !secretExists {
 		log.Warnf("notification secret %s does not exist", NotificationSecret)
