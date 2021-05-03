@@ -1,13 +1,17 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
+	"github.com/argoproj/notifications-engine/pkg/api"
+	"github.com/argoproj/notifications-engine/pkg/controller"
 	"github.com/pkg/errors"
 	smiclientset "github.com/servicemeshinterface/smi-sdk-go/pkg/gen/client/split/clientset/versioned"
 	log "github.com/sirupsen/logrus"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -26,6 +30,7 @@ import (
 	"github.com/argoproj/argo-rollouts/controller/metrics"
 	"github.com/argoproj/argo-rollouts/experiments"
 	"github.com/argoproj/argo-rollouts/ingress"
+	"github.com/argoproj/argo-rollouts/pkg/apis/rollouts/v1alpha1"
 	clientset "github.com/argoproj/argo-rollouts/pkg/client/clientset/versioned"
 	rolloutscheme "github.com/argoproj/argo-rollouts/pkg/client/clientset/versioned/scheme"
 	informers "github.com/argoproj/argo-rollouts/pkg/client/informers/externalversions/rollouts/v1alpha1"
@@ -60,12 +65,13 @@ const (
 
 // Manager is the controller implementation for Argo-Rollout resources
 type Manager struct {
-	metricsServer        *metrics.MetricsServer
-	rolloutController    *rollout.Controller
-	experimentController *experiments.Controller
-	analysisController   *analysis.Controller
-	serviceController    *service.Controller
-	ingressController    *ingress.Controller
+	metricsServer           *metrics.MetricsServer
+	rolloutController       *rollout.Controller
+	experimentController    *experiments.Controller
+	analysisController      *analysis.Controller
+	serviceController       *service.Controller
+	ingressController       *ingress.Controller
+	notificationsController controller.NotificationController
 
 	rolloutSynced                 cache.InformerSynced
 	experimentSynced              cache.InformerSynced
@@ -142,8 +148,21 @@ func NewManager(
 	ingressWorkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "Ingresses")
 
 	refResolver := rollout.NewInformerBasedWorkloadRefResolver(namespace, dynamicclientset, discoveryClient, rolloutWorkqueue, rolloutsInformer.Informer())
-
-	recorder := record.NewEventRecorder(kubeclientset, defaults.Namespace(), configMapInformer, secretInformer)
+	apiFactory := api.NewFactory(record.NewAPIFactorySettings(), defaults.Namespace(), secretInformer.Informer(), configMapInformer.Informer())
+	recorder := record.NewEventRecorder(kubeclientset, apiFactory)
+	notificationsController := controller.NewController(dynamicclientset.Resource(v1alpha1.RolloutGVR), rolloutsInformer.Informer(), apiFactory,
+		controller.WithToUnstructured(func(obj metav1.Object) (*unstructured.Unstructured, error) {
+			data, err := json.Marshal(obj)
+			if err != nil {
+				return nil, err
+			}
+			res := &unstructured.Unstructured{}
+			err = json.Unmarshal(data, res)
+			if err != nil {
+				return nil, err
+			}
+			return res, nil
+		}))
 
 	rolloutController := rollout.NewController(rollout.ControllerConfig{
 		Namespace:                       namespace,
@@ -244,6 +263,7 @@ func NewManager(
 		ingressController:             ingressController,
 		experimentController:          experimentController,
 		analysisController:            analysisController,
+		notificationsController:       notificationsController,
 		dynamicClientSet:              dynamicclientset,
 		refResolver:                   refResolver,
 		namespace:                     namespace,
@@ -283,6 +303,8 @@ func (c *Manager) Run(rolloutThreadiness, serviceThreadiness, ingressThreadiness
 	go wait.Until(func() { c.ingressController.Run(ingressThreadiness, stopCh) }, time.Second, stopCh)
 	go wait.Until(func() { c.experimentController.Run(experimentThreadiness, stopCh) }, time.Second, stopCh)
 	go wait.Until(func() { c.analysisController.Run(analysisThreadiness, stopCh) }, time.Second, stopCh)
+	go wait.Until(func() { c.notificationsController.Run(rolloutThreadiness, stopCh) }, time.Second, stopCh)
+
 	log.Info("Started controller")
 
 	go func() {
