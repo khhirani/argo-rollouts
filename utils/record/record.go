@@ -164,11 +164,8 @@ func (e *EventRecorderAdapter) sendNotifications(object runtime.Object, opts Eve
 	if err != nil {
 		return err
 	}
-	vars := map[string]interface{}{
-		"rollout": objMap,
-	}
 	for _, dest := range destinations {
-		err = notificationsAPI.Send(vars, templates[trigger], dest)
+		err = notificationsAPI.Send(objMap, templates[trigger], dest)
 		if err != nil {
 			log.Error("notification error: %s", err.Error())
 			return err
