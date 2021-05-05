@@ -14,7 +14,7 @@
     
     
       
-        <title>Installation - Argo Rollouts - Kubernetes Progressive Delivery Controller</title>
+        <title>Releasing - Argo Rollouts - Kubernetes Progressive Delivery Controller</title>
       
     
     
@@ -67,7 +67,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#installation" class="md-skip">
+        <a href="#releasing" class="md-skip">
           Skip to content
         </a>
       
@@ -96,7 +96,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Installation
+              Releasing
             
           </span>
         </div>
@@ -214,85 +214,11 @@
 
   
   
-    
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" data-md-toggle="toc" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          Installation
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
         Installation
       </a>
-      
-        
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#controller-installation" class="md-nav__link">
-    Controller Installation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#kubectl-plugin-installation" class="md-nav__link">
-    Kubectl Plugin Installation
-  </a>
-  
-    <nav class="md-nav" aria-label="Kubectl Plugin Installation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#brew" class="md-nav__link">
-    Brew
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#manual" class="md-nav__link">
-    Manual
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#using-the-cli-with-docker" class="md-nav__link">
-    Using the CLI  with Docker
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1433,42 +1359,8 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#controller-installation" class="md-nav__link">
-    Controller Installation
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#kubectl-plugin-installation" class="md-nav__link">
-    Kubectl Plugin Installation
-  </a>
-  
-    <nav class="md-nav" aria-label="Kubectl Plugin Installation">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#brew" class="md-nav__link">
-    Brew
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#manual" class="md-nav__link">
-    Manual
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#using-the-cli-with-docker" class="md-nav__link">
-    Using the CLI  with Docker
+  <a href="#verify" class="md-nav__link">
+    Verify
   </a>
   
 </li>
@@ -1485,62 +1377,58 @@
             <article class="md-content__inner md-typeset">
               
                 
-                  <a href="https://github.com/argoproj/argo-rollouts/edit/master/docs/installation.md" title="Edit this page" class="md-content__button md-icon">
+                  <a href="https://github.com/argoproj/argo-rollouts/edit/master/docs/releasing.md" title="Edit this page" class="md-content__button md-icon">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20.71 7.04c.39-.39.39-1.04 0-1.41l-2.34-2.34c-.37-.39-1.02-.39-1.41 0l-1.84 1.83 3.75 3.75M3 17.25V21h3.75L17.81 9.93l-3.75-3.75L3 17.25z"/></svg>
                   </a>
                 
                 
-                <h1 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h1>
-<h2 id="controller-installation">Controller Installation<a class="headerlink" href="#controller-installation" title="Permanent link">&para;</a></h2>
-<div class="highlight"><pre><span></span><code>kubectl create namespace argo-rollouts
-kubectl apply -n argo-rollouts -f https://raw.githubusercontent.com/argoproj/argo-rollouts/stable/manifests/install.yaml
-</code></pre></div>
-<p>This will create a new namespace, <code>argo-rollouts</code>, where Argo Rollouts controller will run.</p>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>When installing Argo Rollouts on Kubernetes v1.14 or lower, the CRD manifests must be kubectl applied with the --validate=false option. This is caused by use of new CRD fields introduced in v1.15, which are rejected by default in lower API servers.</p>
-</div>
-<div class="admonition tip">
-<p class="admonition-title">Tip</p>
-<p>On GKE, you will need grant your account the ability to create new cluster roles:</p>
-<div class="highlight"><pre><span></span><code>kubectl create clusterrolebinding YOURNAME-cluster-admin-binding --clusterrole<span class="o">=</span>cluster-admin --user<span class="o">=</span>YOUREMAIL@gmail.com
-</code></pre></div>
-</div>
-<h2 id="kubectl-plugin-installation">Kubectl Plugin Installation<a class="headerlink" href="#kubectl-plugin-installation" title="Permanent link">&para;</a></h2>
-<p>The kubectl plugin is optional, but is convenient for managing and visualizing rollouts from the 
-command line.</p>
-<h3 id="brew">Brew<a class="headerlink" href="#brew" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code>brew install argoproj/tap/kubectl-argo-rollouts
-</code></pre></div>
-<h3 id="manual">Manual<a class="headerlink" href="#manual" title="Permanent link">&para;</a></h3>
+                <h1 id="releasing">Releasing<a class="headerlink" href="#releasing" title="Permanent link">&para;</a></h1>
 <ol>
 <li>
-<p>Install <a href="https://github.com/argoproj/argo-rollouts/releases">Argo Rollouts Kubectl plugin</a> with curl.
-    <div class="highlight"><pre><span></span><code>curl -LO https://github.com/argoproj/argo-rollouts/releases/latest/download/kubectl-argo-rollouts-darwin-amd64
-</code></pre></div></p>
-<div class="admonition tip">
-<p>For Linux dist, replace <code>darwin</code> with <code>linux</code></p>
-</div>
+<p>Tag a commit to release from using semantic versioning (e.g. v1.0.0-rc1)</p>
 </li>
 <li>
-<p>Make the kubectl-argo-rollouts binary executable.</p>
-<div class="highlight"><pre><span></span><code>chmod +x ./kubectl-argo-rollouts-darwin-amd64
+<p>Visit the <a href="https://github.com/argoproj/argo-rollouts/actions/workflows/release.yaml">Release GitHub Action</a>
+   and enter the tag.</p>
+</li>
+</ol>
+<p><a href="../release-action.png"><img alt="GitHub Release Action" src="../release-action.png" /></a></p>
+<ol>
+<li>When the action completes, visit the generated draft <a href="https://github.com/argoproj/argo-rollouts/releases">Github releases</a> and enter the details about the release:</li>
+<li>Getting started (copy from previous release and new version)</li>
+<li>
+<p>Changelog</p>
+</li>
+<li>
+<p>Update <code>stable</code> tag:</p>
+<div class="highlight"><pre><span></span><code>git tag stable --force <span class="o">&amp;&amp;</span> git push <span class="nv">$REPO</span> stable --force
 </code></pre></div>
 </li>
 <li>
-<p>Move the binary into your PATH.</p>
-<div class="highlight"><pre><span></span><code>sudo mv ./kubectl-argo-rollouts-darwin-amd64 /usr/local/bin/kubectl-argo-rollouts
+<p>Update Brew formula:</p>
+<div class="highlight"><pre><span></span><code>git clone git@github.com:argoproj/homebrew-tap.git
+<span class="nb">cd</span> homebrew-tap
+git pull
+./update.sh kubectl-argo-rollouts <span class="nv">$VERSION</span>
+git commit -am <span class="s2">&quot;Update kubectl-argo-rollouts to </span><span class="nv">$VERSION</span><span class="s2">&quot;</span>
+git push
 </code></pre></div>
 </li>
 </ol>
-<p>Test to ensure the version you installed is up-to-date:</p>
-<div class="highlight"><pre><span></span><code>kubectl argo rollouts version
+<h3 id="verify">Verify<a class="headerlink" href="#verify" title="Permanent link">&para;</a></h3>
+<ol>
+<li>
+<p>Install locally using the command below and follow the <a href="https://argoproj.github.io/argo-rollouts/getting-started/">Getting Started Guide</a>:</p>
+<div class="highlight"><pre><span></span><code>kubectl apply -n argo-rollouts -f https://github.com/argoproj/argo-rollouts/releases/download/<span class="si">${</span><span class="nv">VERSION</span><span class="si">}</span>/install.yaml
 </code></pre></div>
-<h2 id="using-the-cli-with-docker">Using the CLI  with Docker<a class="headerlink" href="#using-the-cli-with-docker" title="Permanent link">&para;</a></h2>
-<p>The CLI is also available as a container image at <a href="https://quay.io/repository/argoproj/kubectl-argo-rollouts">https://quay.io/repository/argoproj/kubectl-argo-rollouts</a></p>
-<p>You can run it like any other Docker image or use it in any CI platform that supports Docker images.</p>
-<div class="highlight"><pre><span></span><code>docker run quay.io/argoproj/kubectl-argo-rollouts:master version
-</code></pre></div>
+</li>
+<li>
+<p>Check the Kubectl Argo Rollout plugin:
+    <div class="highlight"><pre><span></span><code>brew upgrade kubectl-argo-rollouts
+kubectl argo rollouts version
+</code></pre></div></p>
+</li>
+</ol>
                 
               
               
@@ -1556,39 +1444,6 @@ command line.</p>
       
         
 <footer class="md-footer">
-  
-    <nav class="md-footer__inner md-grid" aria-label="Footer">
-      
-        <a href=".." class="md-footer__link md-footer__link--prev" rel="prev">
-          <div class="md-footer__button md-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12z"/></svg>
-          </div>
-          <div class="md-footer__title">
-            <div class="md-ellipsis">
-              <span class="md-footer__direction">
-                Previous
-              </span>
-              Overview
-            </div>
-          </div>
-        </a>
-      
-      
-        <a href="../concepts/" class="md-footer__link md-footer__link--next" rel="next">
-          <div class="md-footer__title">
-            <div class="md-ellipsis">
-              <span class="md-footer__direction">
-                Next
-              </span>
-              Concepts
-            </div>
-          </div>
-          <div class="md-footer__button md-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4z"/></svg>
-          </div>
-        </a>
-      
-    </nav>
   
   <div class="md-footer-meta md-typeset">
     <div class="md-footer-meta__inner md-grid">
