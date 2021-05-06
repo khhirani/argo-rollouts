@@ -2,9 +2,9 @@ package record
 
 import (
 	"encoding/json"
-
-	"github.com/argoproj/argo-rollouts/utils/conditions"
 	logutil "github.com/argoproj/argo-rollouts/utils/log"
+	"regexp"
+	"strings"
 
 	"github.com/argoproj/notifications-engine/pkg/api"
 	"github.com/argoproj/notifications-engine/pkg/services"
@@ -25,16 +25,6 @@ const (
 	controllerAgentName   = "rollouts-controller"
 	NotificationConfigMap = "argo-rollouts-notification-configmap"
 	NotificationSecret    = "argo-rollouts-notification-secret"
-)
-
-var (
-	BuiltInTriggers = map[string]string{
-		"on-completed":          conditions.RolloutCompletedReason,
-		"on-step-completed":     conditions.RolloutStepCompletedReason,
-		"on-scaling-replicaset": conditions.ScalingReplicaSetReason,
-		"on-update":             conditions.RolloutUpdatedReason,
-	}
-	EventReasonToTrigger = reverseMap(BuiltInTriggers)
 )
 
 func NewAPIFactorySettings() api.Settings {
@@ -132,10 +122,7 @@ func (e *EventRecorderAdapter) sendNotifications(object runtime.Object, opts Eve
 	subsFromAnnotations := subscriptions.Annotations(object.(metav1.Object).GetAnnotations())
 	destByTrigger := subsFromAnnotations.GetDestinations(nil, map[string][]string{})
 
-	trigger, ok := EventReasonToTrigger[opts.EventReason]
-	if !ok {
-		return nil
-	}
+	trigger := translateReasonToTrigger(opts.EventReason)
 
 	destinations := destByTrigger[trigger]
 	if len(destinations) == 0 {
@@ -148,11 +135,9 @@ func (e *EventRecorderAdapter) sendNotifications(object runtime.Object, opts Eve
 	}
 
 	// Creates config for notifications for built-in triggers
-	templates := map[string][]string{}
-	for name, triggers := range notificationsAPI.GetConfig().Triggers {
-		if _, ok := BuiltInTriggers[name]; ok {
-			templates[name] = triggers[0].Send
-		}
+	triggerActions, ok := notificationsAPI.GetConfig().Triggers[trigger]
+	if !ok {
+		return nil
 	}
 
 	objBytes, err := json.Marshal(object)
@@ -164,8 +149,9 @@ func (e *EventRecorderAdapter) sendNotifications(object runtime.Object, opts Eve
 	if err != nil {
 		return err
 	}
+
 	for _, dest := range destinations {
-		err = notificationsAPI.Send(objMap, templates[trigger], dest)
+		err = notificationsAPI.Send(objMap, triggerActions[0].Send, dest)
 		if err != nil {
 			log.Error("notification error: %s", err.Error())
 			return err
@@ -182,10 +168,10 @@ func (e *EventRecorderAdapter) GetAPIFactory() api.Factory {
 	return e.apiFactory
 }
 
-func reverseMap(m map[string]string) map[string]string {
-	n := make(map[string]string)
-	for k, v := range m {
-		n[v] = k
-	}
-	return n
+func translateReasonToTrigger(reason string) string {
+	var matchFirstCap = regexp.MustCompile("(.)([A-Z][a-z]+)")
+	var matchAllCap   = regexp.MustCompile("([a-z0-9])([A-Z])")
+	trigger := matchFirstCap.ReplaceAllString(reason, "${1}-${2}")
+	trigger  = matchAllCap.ReplaceAllString(trigger, "${1}-${2}")
+	return "on-" + strings.ToLower(trigger)
 }

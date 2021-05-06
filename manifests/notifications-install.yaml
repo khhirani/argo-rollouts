@@ -27,9 +27,9 @@ data:
             ]
           }]
   template.rollout-step-completed: |
-    message: Rollout {{.rollout.metadata.name}} step number {{ .rollout.status.currentStepIndex}} has been completed.
+    message: Rollout {{.rollout.metadata.name}} step number {{ add .rollout.status.currentStepIndex 1}}/{{len .rollout.spec.strategy.canary.steps}} has been completed.
     email:
-      subject: Rollout {{.rollout.metadata.name}} step number {{ .rollout.status.currentStepIndex}} has been completed.
+      subject: Rollout {{.rollout.metadata.name}} step number {{ add .rollout.status.currentStepIndex 1}}/{{len .rollout.spec.strategy.canary.steps}} has been completed.
     slack:
       attachments: |
           [{
@@ -43,7 +43,7 @@ data:
             },
             {
               "title": "Step completed",
-              "value": "{{ .rollout.status.currentStepIndex}}",
+              "value": "{{add .rollout.status.currentStepIndex 1}}/{{len .rollout.spec.strategy.canary.steps}}",
               "short": true
             }
             {{range $index, $c := .rollout.spec.template.spec.containers}}
@@ -100,7 +100,12 @@ data:
             },
             {
               "title": "Desired replica",
-              "value": "{{.rollout.spec.replicas}}".
+              "value": "{{.rollout.spec.replicas}}",
+              "short": true
+            },
+            {
+              "title": "Updated replicas",
+              "value": "{{.rollout.status.updatedReplicas}}",
               "short": true
             }
             {{range $index, $c := .rollout.spec.template.spec.containers}}
@@ -114,14 +119,14 @@ data:
             {{end}}
             ]
           }]
-  trigger.on-completed: |
+  trigger.on-rollout-completed: |
     - send: [rollout-completed]
-  trigger.on-scaling-replicaset: |
-    - send: [scaling-replicaset]
-  trigger.on-step-completed: |
+  trigger.on-rollout-step-completed: |
     - send: [rollout-step-completed]
-  trigger.on-updated: |
+  trigger.on-rollout-updated: |
     - send: [rollout-updated]
+  trigger.on-scaling-replica-set: |
+    - send: [scaling-replicaset]
 kind: ConfigMap
 metadata:
   name: argo-rollouts-notification-configmap
