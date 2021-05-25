@@ -3,6 +3,7 @@ module github.com/argoproj/argo-rollouts
 go 1.16
 
 require (
+	cloud.google.com/go v0.58.0 // indirect
 	github.com/antonmedv/expr v1.8.9
 	github.com/argoproj/pkg v0.9.0
 	github.com/aws/aws-sdk-go-v2/config v1.0.0
@@ -18,20 +19,25 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/juju/ansiterm v0.0.0-20180109212912-720a0952cc2a
 	github.com/lunixbochs/vtclean v1.0.0 // indirect
-	github.com/newrelic/newrelic-client-go v0.49.0
+	github.com/mattn/go-colorable v0.1.8 // indirect
+	github.com/newrelic/newrelic-client-go v0.59.1
+	github.com/onsi/ginkgo v1.14.1 // indirect
+	github.com/onsi/gomega v1.10.2 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.10.0
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/common v0.21.0
 	github.com/servicemeshinterface/smi-sdk-go v0.4.1
-	github.com/sirupsen/logrus v1.7.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spaceapegames/go-wavefront v1.8.1
+	github.com/spf13/afero v1.4.1 // indirect
 	github.com/spf13/cobra v1.1.1
 	github.com/stretchr/testify v1.7.0
 	github.com/tj/assert v0.0.3
 	github.com/undefinedlabs/go-mpatch v1.0.6
 	github.com/valyala/fasttemplate v1.2.1
+	golang.org/x/crypto v0.0.0-20201016220609-9e8e0b390897 // indirect
 	golang.org/x/tools v0.1.0 // indirect
 	google.golang.org/genproto v0.0.0-20201110150050-8816d57aaa9a
 	google.golang.org/grpc v1.33.1
