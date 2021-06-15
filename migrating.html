@@ -10,7 +10,7 @@
       
       
       <link rel="icon" href="assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.2, mkdocs-material-7.1.7">
+      <meta name="generator" content="mkdocs-1.2.1, mkdocs-material-7.1.8">
     
     
       
@@ -42,10 +42,19 @@
     
     
       
-        
-<script>window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)},ga.l=+new Date,ga("create","UA-105170809-3","auto"),ga("set","anonymizeIp",!0),ga("send","pageview"),document.addEventListener("DOMContentLoaded",function(){document.forms.search&&document.forms.search.query.addEventListener("blur",function(){var e;this.value&&(e=document.location.pathname,ga("send","pageview",e+"?q="+this.value))}),"undefined"!=typeof location$&&location$.subscribe(function(e){ga("send","pageview",e.pathname)})})</script>
-<script async src="https://www.google-analytics.com/analytics.js"></script>
-      
+  
+
+
+
+  
+  
+
+
+
+  <script>window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)},ga.l=+new Date,ga("create","UA-105170809-3","auto"),ga("set","anonymizeIp",!0),ga("send","pageview"),document.addEventListener("DOMContentLoaded",function(){document.forms.search&&document.forms.search.query.addEventListener("blur",function(){var e;this.value&&(e=document.location.pathname,ga("send","pageview",e+"?q="+this.value))}),"undefined"!=typeof location$&&location$.subscribe(function(e){ga("send","pageview",e.pathname)})})</script>
+  <script async src="https://www.google-analytics.com/analytics.js"></script>
+
+
     
     
   </head>
@@ -500,6 +509,18 @@
     <li class="md-nav__item">
       <a href="features/anti-affinity/anti-affinity.html" class="md-nav__link">
         Anti Affinity
+      </a>
+    </li>
+  
+
+          
+            
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="features/helm.html" class="md-nav__link">
+        Helm
       </a>
     </li>
   
@@ -1536,7 +1557,7 @@ Rollout won't try to manage existing Deployment Pods. That means you can safely 
 to the production environment without any interruption but you are going to run twice more Pods during migration.</p>
 <p><strong>Traffic Management During Migration</strong></p>
 <p>The Rollout offers traffic management functionality that manages routing rules and flows the traffic to different
-versions of an application. For example <a href="../docs/features/bluegreen.md">Blue-Green</a> deployment strategy manipulates
+versions of an application. For example <a href="features/bluegreen.html">Blue-Green</a> deployment strategy manipulates
 Kubernetes Service selector and direct production traffic to "green" instances only.</p>
 <p>If you are using this feature then Rollout switches production traffic to Pods that it manages. The switch happens
 only when the required number of Pod is running and healthy so it is safe in production as well. However, if you
